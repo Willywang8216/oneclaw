@@ -383,10 +383,15 @@ export function verifyDingtalk(clientId: string, clientSecret: string): Promise<
 export async function verifyCustom(apiKey: string, baseURL?: string, apiType?: string, modelID?: string): Promise<void> {
   if (!baseURL) throw new Error("Custom provider 需要 Base URL");
   if (!modelID) throw new Error("Custom provider 需要 Model ID");
-  const base = baseURL.replace(/\/$/, "");
+  const base = stripTrailingSlashes(baseURL);
+  const hasVersion = baseUrlHasVersionSegment(base);
 
   if (apiType === "anthropic-messages") {
-    await jsonRequest(`${base}/v1/messages`, {
+    const urlCandidates = hasVersion
+      ? [joinUrl(base, "/messages")]
+      : [joinUrl(base, "/v1/messages"), joinUrl(base, "/messages")];
+
+    await jsonRequestWithFallback(urlCandidates, {
       method: "POST",
       headers: {
         "User-Agent": UA_ANTHROPIC,
@@ -402,7 +407,11 @@ export async function verifyCustom(apiKey: string, baseURL?: string, apiType?: s
     });
   } else if (apiType === "openai-responses") {
     // OpenAI Responses API（/v1/responses）
-    await jsonRequest(`${base}/v1/responses`, {
+    const urlCandidates = hasVersion
+      ? [joinUrl(base, "/responses")]
+      : [joinUrl(base, "/v1/responses"), joinUrl(base, "/responses")];
+
+    await jsonRequestWithFallback(urlCandidates, {
       method: "POST",
       headers: {
         "User-Agent": UA_OPENAI,
@@ -416,7 +425,11 @@ export async function verifyCustom(apiKey: string, baseURL?: string, apiType?: s
     });
   } else {
     // openai-completions（默认）
-    await jsonRequest(`${base}/chat/completions`, {
+    const urlCandidates = hasVersion
+      ? [joinUrl(base, "/chat/completions")]
+      : [joinUrl(base, "/v1/chat/completions"), joinUrl(base, "/chat/completions")];
+
+    await jsonRequestWithFallback(urlCandidates, {
       method: "POST",
       headers: {
         "User-Agent": UA_OPENAI,
@@ -513,6 +526,39 @@ export async function verifyProvider(params: {
 const UA_ANTHROPIC = "Anthropic/JS 0.73.0";
 const UA_OPENAI = "OpenAI/JS 6.10.0";
 
+function stripTrailingSlashes(input: string): string {
+  return input.replace(/\/+$/, "");
+}
+
+function joinUrl(baseUrl: string, path: string): string {
+  return stripTrailingSlashes(baseUrl) + path;
+}
+
+function baseUrlHasVersionSegment(baseUrl: string): boolean {
+  try {
+    const u = new URL(baseUrl);
+    return /\/v\d+(\/|$)/.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function jsonRequestWithFallback(
+  urls: string[],
+  opts: { method?: string; headers?: Record<string, string>; body?: string }
+): Promise<void> {
+  let lastErr: unknown = null;
+  for (const url of urls) {
+    try {
+      await jsonRequest(url, opts);
+      return;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
 export function jsonRequest(
   url: string,
   opts: { method?: string; headers?: Record<string, string>; body?: string }
@@ -538,7 +584,8 @@ export function jsonRequest(
           if (code >= 200 && code < 300) {
             resolve();
           } else if (code === 401 || code === 403) {
-            reject(new Error(`API Key 无效 (${code})`));
+            const detail = body.trim() ? `: ${body.trim().slice(0, 200)}` : "";
+            reject(new Error(`API Key 无效 (${code})${detail}`));
           } else {
             reject(new Error(`请求失败 (${code}): ${body.slice(0, 200)}`));
           }
