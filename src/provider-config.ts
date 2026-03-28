@@ -394,9 +394,10 @@ export async function verifyCustom(apiKey: string, baseURL?: string, apiType?: s
     await jsonRequestWithFallback(urlCandidates, {
       method: "POST",
       headers: {
-        "User-Agent": UA_ANTHROPIC,
+        "User-Agent": "curl/8.0.1",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
+        accept: "application/json",
         "content-type": "application/json",
       },
       body: JSON.stringify({
@@ -414,8 +415,9 @@ export async function verifyCustom(apiKey: string, baseURL?: string, apiType?: s
     await jsonRequestWithFallback(urlCandidates, {
       method: "POST",
       headers: {
-        "User-Agent": UA_OPENAI,
+        "User-Agent": "curl/8.0.1",
         Authorization: `Bearer ${apiKey}`,
+        accept: "application/json",
         "content-type": "application/json",
       },
       body: JSON.stringify({
@@ -432,8 +434,9 @@ export async function verifyCustom(apiKey: string, baseURL?: string, apiType?: s
     await jsonRequestWithFallback(urlCandidates, {
       method: "POST",
       headers: {
-        "User-Agent": UA_OPENAI,
+        "User-Agent": "curl/8.0.1",
         Authorization: `Bearer ${apiKey}`,
+        accept: "application/json",
         "content-type": "application/json",
       },
       body: JSON.stringify({
@@ -522,10 +525,6 @@ export async function verifyProvider(params: {
 
 // ── HTTP 请求工具 ──
 
-// 与 runtime SDK 保持一致的 User-Agent（见 node_modules/@anthropic-ai/sdk 和 openai）
-const UA_ANTHROPIC = "Anthropic/JS 0.73.0";
-const UA_OPENAI = "OpenAI/JS 6.10.0";
-
 function stripTrailingSlashes(input: string): string {
   return input.replace(/\/+$/, "");
 }
@@ -583,12 +582,24 @@ export function jsonRequest(
           const code = res.statusCode ?? 0;
           if (code >= 200 && code < 300) {
             resolve();
-          } else if (code === 401 || code === 403) {
-            const detail = body.trim() ? `: ${body.trim().slice(0, 200)}` : "";
-            reject(new Error(`API Key 无效 (${code})${detail}`));
-          } else {
-            reject(new Error(`请求失败 (${code}): ${body.slice(0, 200)}`));
+            return;
           }
+
+          const trimmed = body.trim();
+          const detail = trimmed ? `: ${trimmed.slice(0, 200)}` : "";
+
+          if (code === 401) {
+            reject(new Error(`API Key 无效 (${code})${detail}`));
+            return;
+          }
+
+          if (code === 403) {
+            const blockedHint = /(blocked|access denied|forbidden|cloudflare|captcha)/i.test(trimmed);
+            reject(new Error(`${blockedHint ? "请求被拦截" : "权限不足"} (${code})${detail}`));
+            return;
+          }
+
+          reject(new Error(`请求失败 (${code})${detail}`));
         });
       }
     );
