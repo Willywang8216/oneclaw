@@ -253,6 +253,19 @@ export function registerSetupIpc(deps: SetupIpcDeps): void {
         config.channels.imessage ??= {};
         config.channels.imessage.enabled = false;
 
+        // OneClaw: ship Telegram/Discord, but keep them opt-in at runtime via channel config.
+        // We still mark the plugins as enabled so the channels appear in Control UI.
+        config.plugins ??= {};
+        if (typeof config.plugins.enabled !== "boolean") {
+          config.plugins.enabled = true;
+        }
+        config.plugins.entries ??= {};
+        const entries = config.plugins.entries as Record<string, any>;
+        entries.telegram = entries.telegram && typeof entries.telegram === "object" ? entries.telegram : {};
+        entries.telegram.enabled = true;
+        entries.discord = entries.discord && typeof entries.discord === "object" ? entries.discord : {};
+        entries.discord.enabled = true;
+
         // 禁止 gateway 自行检查 npm 更新（OneClaw 整包打包，用户无法独立更新 gateway）
         config.update ??= {};
         config.update.checkOnStart = false;

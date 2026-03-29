@@ -223,7 +223,7 @@ export function renderOverview(props: OverviewProps) {
             </div>`
             : html`
                 <div class="callout" style="margin-top: 14px">
-                  Use Channels to link WhatsApp, Telegram, Discord, Signal, or iMessage.
+                  Use Channels to link Telegram, Discord, Feishu, WeCom, DingTalk, QQ Bot, or WeChat.
                 </div>
               `
         }

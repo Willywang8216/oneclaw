@@ -316,6 +316,43 @@ function migrateDisableGatewayUpdateCheck(): void {
   }
 }
 
+// Telegram/Discord 通过 openclaw 插件系统注入 channel；存量用户默认补齐启用项以便在 UI 中可见。
+function migrateEnableTelegramDiscordPlugins(): void {
+  try {
+    const config = readUserConfig();
+
+    let changed = false;
+    config.plugins ??= {};
+    if (typeof config.plugins.enabled !== "boolean") {
+      config.plugins.enabled = true;
+      changed = true;
+    }
+
+    config.plugins.entries ??= {};
+    const entries = config.plugins.entries as Record<string, any>;
+
+    for (const id of ["telegram", "discord"]) {
+      const entry = entries[id];
+      if (entry == null) {
+        entries[id] = { enabled: true };
+        changed = true;
+        continue;
+      }
+      if (typeof entry === "object" && entry !== null && typeof entry.enabled !== "boolean") {
+        entry.enabled = true;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      writeUserConfig(config);
+      log.info("[migrate] 已为存量用户补齐 telegram/discord 插件默认启用项");
+    }
+  } catch {
+    // 迁移失败不阻塞启动
+  }
+}
+
 // 从配置同步 search API key 到 gateway 环境变量
 // 代理模式下实际请求走代理注入 token，但插件初始化仍需 env var 存在
 function syncKimiSearchEnv(): void {
@@ -881,6 +918,7 @@ app.whenReady().then(async () => {
       // 状态 1：正常启动
       migrateSessionMemoryHook();
       migrateDisableGatewayUpdateCheck();
+      migrateEnableTelegramDiscordPlugins();
       void reconcileCliOnAppLaunch().catch((err) => {
         log.error(`[migrate] CLI launch reconciliation failed: ${err instanceof Error ? err.message : String(err)}`);
       });
@@ -893,6 +931,7 @@ app.whenReady().then(async () => {
       migrateFromLegacy();
       migrateSessionMemoryHook();
       migrateDisableGatewayUpdateCheck();
+      migrateEnableTelegramDiscordPlugins();
       void reconcileCliOnAppLaunch().catch((err) => {
         log.error(`[migrate] CLI launch reconciliation failed: ${err instanceof Error ? err.message : String(err)}`);
       });

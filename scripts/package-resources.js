@@ -28,6 +28,7 @@ const KIMI_SEARCH_DEFAULT_TGZ_URL = `${KIMI_CLAW_BASE_URL}/openclaw-kimi-search-
 const KIMI_SEARCH_CACHE_FILE = "openclaw-kimi-search-0.1.2.tgz";
 const QQBOT_PACKAGE_NAME = "@sliverp/qqbot";
 const DINGTALK_CONNECTOR_PACKAGE_NAME = "@dingtalk-real-ai/dingtalk-connector";
+const DISCORD_PLUGIN_PACKAGE_NAME = "@openclaw/discord";
 const WECOM_PLUGIN_PACKAGE_NAME = "@wecom/wecom-openclaw-plugin";
 const WEIXIN_PLUGIN_PACKAGE_NAME = "@tencent-weixin/openclaw-weixin";
 
@@ -598,6 +599,9 @@ function getQqbotPackageSource() {
 function getDingtalkConnectorPackageSource() {
   return resolveBundledPluginSource({ packageName: DINGTALK_CONNECTOR_PACKAGE_NAME, envKey: "ONECLAW_DINGTALK_CONNECTOR_PACKAGE_SOURCE", pkgJsonKey: "dingtalkConnector" });
 }
+function getDiscordPluginPackageSource() {
+  return resolveBundledPluginSource({ packageName: DISCORD_PLUGIN_PACKAGE_NAME, envKey: "ONECLAW_DISCORD_PLUGIN_PACKAGE_SOURCE", pkgJsonKey: "discord" });
+}
 function getWecomPluginPackageSource() {
   return resolveBundledPluginSource({ packageName: WECOM_PLUGIN_PACKAGE_NAME, envKey: "ONECLAW_WECOM_PLUGIN_PACKAGE_SOURCE", pkgJsonKey: "wecom" });
 }
@@ -1130,6 +1134,12 @@ const BUNDLED_PLUGINS = [
     requiredFiles: ["package.json", "openclaw.plugin.json"],
   },
   {
+    id: "discord",
+    packageName: DISCORD_PLUGIN_PACKAGE_NAME,
+    requiredFiles: ["package.json", "openclaw.plugin.json"],
+    getSource: getDiscordPluginPackageSource,
+  },
+  {
     id: "qqbot",
     packageName: QQBOT_PACKAGE_NAME,
     requiredFiles: ["package.json", "openclaw.plugin.json"],
@@ -1189,6 +1199,7 @@ const OPENCLAW_EXTENSION_ALLOWLIST = new Set([
   "feishu",
   "imessage",
   "telegram",
+  "discord",
   "kimi-claw",
   "kimi-search",
   "qqbot",
@@ -1204,6 +1215,8 @@ const REQUIRED_OPENCLAW_EXTENSION_OUTPUTS = [
   path.join("device-pair", "openclaw.plugin.json"),
   path.join("feishu", "openclaw.plugin.json"),
   path.join("imessage", "openclaw.plugin.json"),
+  path.join("telegram", "openclaw.plugin.json"),
+  path.join("discord", "openclaw.plugin.json"),
   path.join("kimi-claw", "openclaw.plugin.json"),
   path.join("kimi-search", "openclaw.plugin.json"),
   path.join("qqbot", "openclaw.plugin.json"),
