@@ -6,6 +6,7 @@ import { WindowManager } from "./window";
 import { TrayManager } from "./tray";
 import { SetupManager } from "./setup-manager";
 import { registerSetupIpc } from "./setup-ipc";
+import { ensureBundledSkillsInstalled } from "./bundled-skills";
 import {
   approveFeishuPairingRequest,
   approveWecomPairingRequest,
@@ -803,6 +804,12 @@ function syncAppFocusState(trigger: string): void {
 
 app.whenReady().then(async () => {
   log.info("app ready");
+
+  try {
+    ensureBundledSkillsInstalled();
+  } catch (err: any) {
+    log.error(`[bundled-skills] install failed: ${err?.message ?? String(err)}`);
+  }
 
   // 所有窗口的 show/hide/closed 事件统一驱动 Dock 可见性
   app.on("browser-window-created", (_e, win) => {
